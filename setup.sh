@@ -33,12 +33,17 @@ EOF
 # Install Docker
 # https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-convenience-script
 $TEE -a $FILE <<EOF >/dev/null
+package { ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']:
+  ensure => absent,
+  before => Exec['get-docker'],
+}
 exec { 'get-docker':
   command => 'curl -fsSL https://get.docker.com -o get-docker.sh',
   require => Package['curl'],
 }
 exec { 'install-docker':
   command => 'sh get-docker.sh',
+  unless  => 'dpkg -s docker-ce-cli',
   require => Exec['get-docker'],
 }
 EOF
