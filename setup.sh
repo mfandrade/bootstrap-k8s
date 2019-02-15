@@ -5,6 +5,11 @@ TEE=/usr/bin/tee
 DIR=$(/bin/mktemp -d)
 FILE="$DIR/install.pp"
 
+if test $EUID -ne 0; then
+    echo "This script must be run as root"
+    exit 1
+fi
+
 # Install Puppet as requirement
 # -----------------------------------------------------------------------------
 if test ! -x /usr/bin/puppet; then
