@@ -4,7 +4,9 @@ APT=/usr/bin/apt-get
 TEE=/usr/bin/tee
 #DIR=$(/bin/mktemp -d)
 DIR=/tmp/ppp
-/bin/mkdir $DIR
+if test ! -d $DIR; then
+    /bin/mkdir $DIR;
+fi
 FILE="$DIR/install.pp"
 
 # Install Puppet as requirement
@@ -42,12 +44,18 @@ exec { 'install-docker':
 EOF
 
 /usr/bin/puppet apply $FILE 2>&1 >/dev/null
+
+# testing
 /usr/bin/docker run hello-world | grep '^Hello'
-/bin/systemctl enable docker
 
-
-$APT purge -y --autoremove docker-ce docker-ce-cli 2>&1 >/dev/null
-/bin/rm -rf /var/lib/docker
-
+# postinstall
+#/bin/systemctl enable docker
 #/usr/sbin/usermod -aG docker your-user
-/bin/rm -rf $DIR
+
+# redo step
+#$APT purge -y --autoremove docker-ce docker-ce-cli 2>&1 >/dev/null
+#/bin/rm -rf /var/lib/docker
+
+
+# cleanup
+#/bin/rm -rf $DIR
