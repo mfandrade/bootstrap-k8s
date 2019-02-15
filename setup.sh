@@ -8,7 +8,10 @@ FILE="$DIR/install.pp"
 # Install Puppet as requirement
 # -----------------------------------------------------------------------------
 if test ! -x /usr/bin/puppet; then
-    $APT update && $APT install -y puppet && $APT clean
+    $APT install -y puppet && $APT clean
+fi
+if test ! -x /usr/bin/curl; then
+    $APT install -y curl && $APT clean # FIXME: melhorar
 fi
 $TEE $FILE <<EOF >/dev/null
 Exec {
@@ -34,6 +37,7 @@ exec { 'apt-update':
   subscribe => [ File['docker.list'], File['kubernetes.list'] ],
 }
 EOF
+
 
 # Install Docker
 # -----------------------------------------------------------------------------
@@ -62,14 +66,39 @@ package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
 }
 EOF
 
-# Install docker-compose
+
+KERNEL=$(/bin/uname -s)
+ARCH=$(/bin/uname -m)
+
+# Install docker-compose and docker-machine
 # -----------------------------------------------------------------------------
-# prepare to install docker-compose
-# URL=$(curl -sL -o /dev/null -w %{url_effective} https://github.com/docker/compose/releases/latest)
-# VERSION=$(echo $URL | cut -d'/' -f8)
-# curl -L "https://github.com/docker/compose/releases/download/$VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-#
-# TODO: the same for docker-machine
+COMPOSE_URL=$(/usr/bin/curl -sL -o /dev/null -w %{url_effective} \
+    https://github.com/docker/compose/releases/latest)
+LATEST=$(echo $COMPOSE_URL | /usr/bin/cut -f8 -d/)
+$TEE -a $FILE <<EOF >/dev/null
+exec { 'get-dockercompose':
+  command => 'curl -sL -o docker-compose "https://github.com/docker/compose/releases/download/$LATEST/docker-compose-$KERNEL-$ARCH"',
+}
+exec { 'install-dockercompose':
+  command => 'install docker-compose /usr/local/bin',
+  require => Exec['get-dockercompose'],
+}
+EOF
+
+MACHINE_URL=$(/usr/bin/curl -sL -o /dev/null -w %{url_effective} \
+    https://github.com/docker/machine/releases/latest)
+LATEST=$(echo $MACHINE_URL | /usr/bin/cut -f8 -d/)
+$TEE -a $FILE <<EOF >/dev/null
+exec { 'get-dockermachine':
+  command => 'curl -sL -o docker-machine "https://github.com/docker/machine/releases/download/$LATEST/docker-machine-$KERNEL-$ARCH"',
+}
+exec { 'install-dockermachine':
+  command => 'install docker-machine /usr/local/bin',
+  require => Exec['get-dockermachine'],
+}
+EOF
+unset KERNEL ARCH LATEST
+
 
 # Install Kubernetes
 # -----------------------------------------------------------------------------
@@ -102,5 +131,5 @@ EOF
 
 # postinstall
 /bin/systemctl -q enable docker
-$APT purge -y --autoremove puppet && /bin/rm -rf /var/cache/puppet
+#$APT purge -y --autoremove puppet && /bin/rm -rf /var/cache/puppet
 /bin/rm -rf $DIR
