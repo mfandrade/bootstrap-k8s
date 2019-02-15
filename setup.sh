@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/sh
+
+DEBUG=true
 
 APT=/usr/bin/apt-get
 TEE=/usr/bin/tee
-#DIR=$(/bin/mktemp -d)
-DIR=/tmp/ppp
+test $DEBUG && DIR=/tmp/ppp || DIR=$(/bin/mktemp -d)
 if test ! -d $DIR; then
     /bin/mkdir $DIR;
 fi
@@ -48,19 +49,20 @@ exec { 'install-docker':
 }
 EOF
 
+
 /usr/bin/puppet apply $FILE 2>&1 >/dev/null
 
 # testing
 /usr/bin/docker run hello-world | grep '^Hello'
 
 # postinstall
-#/bin/systemctl enable docker
+test ! $DEBUG && /bin/systemctl enable docker
 #/usr/sbin/usermod -aG docker your-user
 
 # redo step
-#$APT purge -y --autoremove docker-ce docker-ce-cli 2>&1 >/dev/null
-#/bin/rm -rf /var/lib/docker
+test $DEBUG && $APT purge -y --autoremove docker-ce docker-ce-cli 2>&1 >/dev/null
+test $DEBUG && /bin/rm -rf /var/lib/docker
 
 
 # cleanup
-#/bin/rm -rf $DIR
+test ! $DEBUG && /bin/rm -rf $DIR
