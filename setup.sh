@@ -1,19 +1,14 @@
 #!/bin/sh
 
-DEBUG=true
-REDO=true
-
 APT=/usr/bin/apt-get
 TEE=/usr/bin/tee
-test $DEBUG && DIR=/tmp/ppp || DIR=$(/bin/mktemp -d)
-if test ! -d $DIR; then
-    /bin/mkdir $DIR;
-fi
+DIR=$(/bin/mktemp -d)
 FILE="$DIR/install.pp"
 
 # Install Puppet as requirement
+# -----------------------------------------------------------------------------
 if test ! -x /usr/bin/puppet; then
-    $APT update && $APT install -y puppet 2>&1 >/dev/null
+    $APT update && $APT install -y puppet 2>&1 >/dev/null && $APT clean
 fi
 $TEE $FILE <<EOF >/dev/null
 Exec {
@@ -26,7 +21,11 @@ file { '.curlrc':
   content => 'proxy = http://autenticador:Autent1c$50d0r@10.8.14.22:6588',
   before  => Package['curl'],
 }
-package { ['apt-transport-https', 'ca-certificates', 'curl', 'gnupg2', 'software-properties-common']:
+package { ['apt-transport-https',
+           'ca-certificates',
+           'curl',
+           'gnupg2',
+           'software-properties-common']:
   ensure  => present,
   require => Exec['apt-update'],
 }
@@ -36,8 +35,8 @@ exec { 'apt-update':
 }
 EOF
 
-# -----------------------------------------------------------------------------
 # Install Docker
+# -----------------------------------------------------------------------------
 # https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
 $TEE -a $FILE <<EOF >/dev/null
 package { ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']:
@@ -71,8 +70,8 @@ EOF
 #
 # TODO: the same for docker-machine
 
-# -----------------------------------------------------------------------------
 # Install Kubernetes
+# -----------------------------------------------------------------------------
 # https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
 $TEE -a $FILE <<EOF >/dev/null
 exec { 'get-kubernetes-key':
@@ -94,28 +93,12 @@ package { ['kubelet', 'kubeadm', 'kubectl']:
 }
 EOF
 
-if test $DEBUG; then
-  /usr/bin/puppet apply $FILE --verbose
-else
-  /usr/bin/puppet apply $FILE 2>&1 >/dev/null
-fi
+/usr/bin/puppet apply $FILE --logdest=/tmp/k8s-install-log.json
+echo ']' >> /tmp/k8s-install-log.json
 
 # testing
 /usr/bin/docker run hello-world | grep '^Hello'
 
 # postinstall
-test ! $DEBUG && /bin/systemctl enable docker
-#/usr/sbin/usermod -aG docker your-user
-
-# redo step
-if test $REDO; then
-  $APT purge -y --autoremove docker-ce docker-ce-cli containerd.io 2>&1 >/dev/null
-  /bin/rm /etc/apt/sources.list.d/docker.list
-  /bin/rm -rf /var/lib/docker
-  /usr/bin/apt-mark unhold kubelet kubeadm kubectl 2>&1 >/dev/null
-  $APT purge -y --autoremove kubelet kubeadm kubectl 2>&1 >/dev/null
-  /bin/rm /etc/apt/sources.list.d/kubernetes.list
-fi
-
-# cleanup
-test ! $REDO && /bin/rm -rf $DIR
+/bin/systemctl enable docker
+/bin/rm -rf $DIR
