@@ -8,7 +8,7 @@ FILE="$DIR/install.pp"
 # Install Puppet as requirement
 # -----------------------------------------------------------------------------
 if test ! -x /usr/bin/puppet; then
-    $APT update && $APT install -y puppet 2>&1 >/dev/null && $APT clean
+    $APT update && $APT install -y puppet && $APT clean
 fi
 $TEE $FILE <<EOF >/dev/null
 Exec {
@@ -62,6 +62,7 @@ package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
 }
 EOF
 
+# Install docker-compose
 # -----------------------------------------------------------------------------
 # prepare to install docker-compose
 # URL=$(curl -sL -o /dev/null -w %{url_effective} https://github.com/docker/compose/releases/latest)
@@ -93,12 +94,13 @@ package { ['kubelet', 'kubeadm', 'kubectl']:
 }
 EOF
 
-/usr/bin/puppet apply $FILE --logdest=/tmp/k8s-install-log.json
-echo ']' >> /tmp/k8s-install-log.json
+/usr/bin/puppet apply --logdest=/tmp/k8s-install-log.json $FILE \
+    && echo ']' >> /tmp/k8s-install-log.json
 
 # testing
 /usr/bin/docker run hello-world | grep '^Hello'
 
 # postinstall
-/bin/systemctl enable docker
+/bin/systemctl -q enable docker
+$APT purge -y --autoremove puppet && /bin/rm -rf /var/cache/puppet
 /bin/rm -rf $DIR
