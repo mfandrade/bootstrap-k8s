@@ -1,32 +1,38 @@
 #!/bin/bash
+#
+# Install a functional docker and kubernetes environment.
+set -fue
 
-APT=/usr/bin/apt-get
-TEE=/usr/bin/tee
-DIR=$(/bin/mktemp -d)
-FILE="$DIR/install.pp"
+dir=$(/bin/mktemp -d)
+file="${dir}/install.pp"
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "This script must be run as root"
+if [ "$EUID" -ne 0 ]; then
+    echo "This script must be run as root."
     exit 1
 fi
 
-# Install Puppet as requirement
-# -----------------------------------------------------------------------------
-if [[ ! -x /usr/bin/puppet ]]; then
-    $APT install -y puppet && $APT clean
-fi
-if [[ ! -x /usr/bin/curl ]]; then
-    $APT install -y curl && $APT clean # FIXME: melhorar
-fi
-$TEE $FILE <<EOF >/dev/null
+err()
+{
+    echo "$@" >&2
+}
+
+requirements()
+{
+    command -v puppet &>/dev/null || apt-get install -y puppet &>/dev/null
+    command -v curl &>/dev/null || apt-get install -y curl &>/dev/null
+}
+
+puppet_begin()
+{
+    tee $file <<EOF >/dev/null
 Exec {
-  cwd  => '$DIR',
+  cwd  => '${dir}',
   path => '/usr/bin:/bin',
 }
 file { '.curlrc':
-  path    => '$HOME/.curlrc',
+  path    => '${HOME}/.curlrc',
   ensure  => file,
-  content => 'proxy = http://autenticador:Autent1c$50d0r@10.8.14.22:6588',
+  content => 'proxy = http://autenticador:Autent1c\$50d0r@10.8.14.22:6588',
   before  => Package['curl'],
 }
 package { ['apt-transport-https',
@@ -42,15 +48,21 @@ exec { 'apt-update':
   subscribe => [ File['docker.list'], File['kubernetes.list'] ],
 }
 EOF
+}
 
-
-# Install Docker
-# -----------------------------------------------------------------------------
+puppet_install_docker()
+# Installs docker according to the documentation at
 # https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
-$TEE -a $FILE <<EOF >/dev/null
+{
+    tee -a $file <<EOF >/dev/null
 package { ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']:
   ensure => absent,
   before => Package['docker-ce'],
+}
+service { 'docker':
+  enabled => true,
+  started => true,
+  require => Package['docker-ce'],
 }
 exec { 'get-docker-key':
   command => 'curl -fsSL https://download.docker.com/linux/debian/gpg -o docker-key',
@@ -70,45 +82,49 @@ package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
   require => File['docker.list'],
 }
 EOF
-
-
-KERNEL=$(/bin/uname -s)
-ARCH=$(/bin/uname -m)
-
-# Install docker-compose and docker-machine
-# -----------------------------------------------------------------------------
-COMPOSE_URL=$(/usr/bin/curl -sL -o /dev/null -w %{url_effective} \
-    https://github.com/docker/compose/releases/latest)
-LATEST=$(echo $COMPOSE_URL | /usr/bin/cut -f8 -d/)
-$TEE -a $FILE <<EOF >/dev/null
-exec { 'get-dockercompose':
-  command => 'curl -sL -o docker-compose "https://github.com/docker/compose/releases/download/$LATEST/docker-compose-$KERNEL-$ARCH"',
 }
-exec { 'install-dockercompose':
-  command => 'install docker-compose /usr/local/bin',
-  require => Exec['get-dockercompose'],
+
+github_latest_release()
+# returns the tag of the latest release in a given github repo
+{   # TODO: errors when release doesn't exist
+    local user="$1"
+    local repo="$2"
+    local url="https://github.com/${user}/${repo}/releases/latest"
+    local eff=$(curl -sL -o /dev/null -w %{url_effective} $url)
+    local latest=$(echo $eff | rev | cut -f1 -d/ | rev)
+
+    echo "$latest"
+}
+
+puppet_install_docker_util()
+{
+    if [ "$1" != "compose" ] && [ "$1" != "machine" ]; then
+        err "Only docker-compose and docker-machine allowed."
+	exit 1
+    fi
+    local repo="$1"
+    local version=$(github_latest_release docker $repo)
+    local kernel=$(/bin/uname -s)
+    local arch=$(/bin/uname -m)
+    local url="https://github.com/docker/${repo}/releases/download/${version}/docker-${repo}-${kernel}-${arch}"
+
+    tee -a $file <<EOF >/dev/null
+exec { 'get-docker${repo}':
+  command => 'curl -sL -o docker-${repo} "${url}"',
+}
+exec { 'install-docker${repo}':
+  command => 'install docker-${repo} /usr/local/bin',
+  require => Exec['get-docker${repo}'],
 }
 EOF
-
-MACHINE_URL=$(/usr/bin/curl -sL -o /dev/null -w %{url_effective} \
-    https://github.com/docker/machine/releases/latest)
-LATEST=$(echo $MACHINE_URL | /usr/bin/cut -f8 -d/)
-$TEE -a $FILE <<EOF >/dev/null
-exec { 'get-dockermachine':
-  command => 'curl -sL -o docker-machine "https://github.com/docker/machine/releases/download/$LATEST/docker-machine-$KERNEL-$ARCH"',
 }
-exec { 'install-dockermachine':
-  command => 'install docker-machine /usr/local/bin',
-  require => Exec['get-dockermachine'],
-}
-EOF
-unset KERNEL ARCH LATEST
 
 
-# Install Kubernetes
-# -----------------------------------------------------------------------------
+puppet_install_kubernetes()
+# installs kubernetes according to the documentation at
 # https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
-$TEE -a $FILE <<EOF >/dev/null
+{
+    tee -a $file <<EOF >/dev/null
 exec { 'get-kubernetes-key':
   command => 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg -o kubernetes-key',
   require => Package['curl'],
@@ -127,14 +143,36 @@ package { ['kubelet', 'kubeadm', 'kubectl']:
   require => File['kubernetes.list'],
 }
 EOF
+}
 
-/usr/bin/puppet apply --logdest=/tmp/k8s-install-log.json $FILE \
-    && echo ']' >> /tmp/k8s-install-log.json
+check_docker()
+{
+    docker run hello-world | grep '^Hello'
+}
 
-# testing
-/usr/bin/docker run hello-world | grep '^Hello'
+postinstall()
+{
+    /bin/rm -rf $dir
+    apt-get purge -y --autoremove puppet &>/dev/null \
+        && /bin/rm -rf /var/cache/puppet
+}
 
-# postinstall
-/bin/systemctl -q enable docker
-#$APT purge -y --autoremove puppet && /bin/rm -rf /var/cache/puppet
-/bin/rm -rf $DIR
+
+main()
+{
+    requirements
+    puppet_begin
+    puppet_install_docker
+    puppet_install_docker_util compose
+    puppet_install_docker_util machine
+    puppet_install_kubernetes
+
+    puppet apply --logdest=/tmp/k8s-install-log.json $file \
+        && echo ']' >> /tmp/k8s-install-log.json
+
+    check_docker
+
+    postinstall
+}
+
+main
