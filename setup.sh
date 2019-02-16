@@ -1,21 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
 APT=/usr/bin/apt-get
 TEE=/usr/bin/tee
 DIR=$(/bin/mktemp -d)
 FILE="$DIR/install.pp"
 
-if test $EUID -ne 0; then
+if [[ "$EUID" -ne 0 ]]; then
     echo "This script must be run as root"
     exit 1
 fi
 
 # Install Puppet as requirement
 # -----------------------------------------------------------------------------
-if test ! -x /usr/bin/puppet; then
+if [[ ! -x /usr/bin/puppet ]]; then
     $APT install -y puppet && $APT clean
 fi
-if test ! -x /usr/bin/curl; then
+if [[ ! -x /usr/bin/curl ]]; then
     $APT install -y curl && $APT clean # FIXME: melhorar
 fi
 $TEE $FILE <<EOF >/dev/null
