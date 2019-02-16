@@ -254,3 +254,4 @@ main()
 }
 
 requirements
+puppet_begin
