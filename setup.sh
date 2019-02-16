@@ -18,16 +18,16 @@ err()
 
 check_distro()
 {
-    local vregexp='\([[:alpha:]]*\)'
+    local regexp='\([[:alpha:]]*\)'
     if [ -f /etc/os-release ]; then
         source /etc/os-release
         distro="$ID"
         version=$(echo $VERSION_ID | cut -f1 -d.)
-        codename=$(echo $VERSION | grep -o $vregexp | tr [A-Z] [a-z])
+        codename=$(echo $VERSION | grep -o $regexp | tr [A-Z] [a-z])
     elif command -v lsb_release &>/dev/null; then
         distro="$(lsb_release -si | tr [A-Z] [a-z])"
         version="$(lsb_release -sr | cut -f1 -d.)"
-        codename=$(lsb_release -sc | grep $vregexp | tr [A-Z] [a-z])
+        codename=$(lsb_release -sc | grep $regexp | tr [A-Z] [a-z])
     else
         err "Could not get the version of this distro."
         exit 1
@@ -41,6 +41,7 @@ requirements()
     local distro=${so[0]}
     local version=${so[1]}
     local codename=${so[2]}
+    cd $dir
     case $distro in
         redhat|centos)
             yum install -y curl &>/dev/null
@@ -49,6 +50,7 @@ requirements()
             curl -sL -O $url && \
             rpm -Uvh $pkg &>/dev/null && \
                 yum install -y puppet-agent &>/dev/null
+            ln -sf /opt/puppetlabs/bin/puppet /usr/local/bin           
             ;;
 
         debian|ubuntu)
