@@ -50,7 +50,7 @@ requirements()
             curl -sL -O $url && \
             rpm -Uvh $pkg &>/dev/null && \
                 yum install -y puppet-agent &>/dev/null
-            ln -sf /opt/puppetlabs/bin/puppet /usr/local/bin           
+            ln -sf /opt/puppetlabs/bin/puppet /usr/local/bin
             ;;
 
         debian|ubuntu)
@@ -102,7 +102,38 @@ puppet_install_docker()
 # https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
 {
     tee -a $file <<EOF >/dev/null
-package { ['docker', 'docker-engine', 'docker.io', 'containerd', 'runc']:
+// https://docs.docker.com/install/linux/docker-ce/debian/#uninstall-old-versions
+if $::osfamily == 'Debian' {
+    $oldpkgs = ['docker',
+                'docker-engine',
+                'docker-io',
+                'containerd',
+                'runc']
+
+    $reqpkgs = ['apt-transport-https',
+                'ca-certificates',
+                'curl',
+                'gnupg2',
+                'software-properties-common']
+
+// https://docs.docker.com/install/linux/docker-ce/centos/#uninstall-old-versions
+} elsif $::osfamily == 'RedHat' {
+    $oldpkgs = ['docker',
+                'docker-client',
+                'docker-client-latest',
+                'docker-common',
+                'docker-latest',
+                'docker-latest-logrotate',
+                'docker-logrotate',
+                'docker-engine']
+
+    $reqpkgs = ['yum-utils',
+                'device-mapper-persistent-data',
+                'lvm2']
+
+} else fail('Unsupported osfamily.')
+
+package { $oldpkgs:
   ensure => absent,
   before => Package['docker-ce'],
 }
