@@ -87,13 +87,13 @@ package { 'curl':
 }
 
 if $::osfamily == 'Debian' {
-    $oldpkgs = ['docker',
+    \$oldpkgs = ['docker',
                 'docker-engine',
                 'docker-io',
                 'containerd',
                 'runc']
 
-    $reqpkgs = ['apt-transport-https',
+    \$reqpkgs = ['apt-transport-https',
                 'ca-certificates',
                 'gnupg2',
                 'software-properties-common']
@@ -104,7 +104,7 @@ if $::osfamily == 'Debian' {
     }
 
 } elsif $::osfamily == 'RedHat' {
-    $oldpkgs = ['docker',
+    \$oldpkgs = ['docker',
                 'docker-client',
                 'docker-client-latest',
                 'docker-common',
@@ -113,17 +113,17 @@ if $::osfamily == 'Debian' {
                 'docker-logrotate',
                 'docker-engine']
 
-    $reqpkgs = ['yum-utils',
+    \$reqpkgs = ['yum-utils',
                 'device-mapper-persistent-data',
                 'lvm2']
 
 } else fail('Unsupported osfamily.');
 
-package { $oldpkgs:
+package { \$oldpkgs:
   ensure => absent,
   before => Package['docker-ce'],
 }
-package { $reqpkgs:
+package { \$reqpkgs:
   ensure => installed,
 }
 EOF
