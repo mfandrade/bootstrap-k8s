@@ -50,7 +50,6 @@ requirements()
             curl -sL -O $url && \
             rpm -Uvh $pkg &>/dev/null && \
                 yum install -y puppet-agent &>/dev/null
-            ln -sf /opt/puppetlabs/bin/puppet /usr/local/bin
             ;;
 
         debian|ubuntu)
@@ -67,9 +66,11 @@ requirements()
             exit
             ;;
     esac
+
+    ln -sf /opt/puppetlabs/bin/puppet /usr/local/bin
 }
 
-puppet_begin()
+__puppet_begin()
 {
     tee $file <<EOF >/dev/null
 Exec {
@@ -100,7 +101,6 @@ if $::osfamily == 'Debian' {
 
     exec { 'apt-update':
       command   => 'apt-get update',
-      subscribe => [ File['docker.list'], File['kubernetes.list'] ],
     }
 
 } elsif $::osfamily == 'RedHat' {
@@ -117,7 +117,7 @@ if $::osfamily == 'Debian' {
                 'device-mapper-persistent-data',
                 'lvm2']
 
-} else fail('Unsupported osfamily.');
+} else { fail('Unsupported osfamily.') }
 
 package { \$oldpkgs:
   ensure => absent,
@@ -133,28 +133,41 @@ puppet_install_docker()
 # Installs docker according to the documentation at
 # https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
 {
+    __puppet_begin
+
     tee -a $file <<EOF >/dev/null
 service { 'docker':
-  enabled => true,
-  started => true,
+  start   => true,
+  enable  => true,
   require => Package['docker-ce'],
 }
-exec { 'get-docker-key':
-  command => 'curl -fsSL https://download.docker.com/linux/debian/gpg -o docker-key',
-  require => Package['curl'],
+
+if $::osfamily == 'Debian' {
+    exec { 'get-docker-key':
+      command => 'curl -fsSL https://download.docker.com/linux/debian/gpg -o docker-key',
+      require => Package['curl'],
+    }
+    exec { 'add-docker-key':
+      command =>'apt-key add docker-key',
+      require => Exec['get-docker-key'],
+    }
+    file { 'docker.list':
+      path    => '/etc/apt/sources.list.d/docker.list',
+      ensure  => file,
+      content => 'deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable',
+      before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
+      notify  => Exec['apt-update'],
+    }
+
+} elsif $::osfamily == 'RedHat' {
+    \$repo = 'https://download.docker.com/linux/centos/docker-ce.repo'
+    exec { 'add-yum-repo':
+      command => 'yum-config-manager --add-repo \$repo',
+      before  => ['docker-ce', 'docker-ce-cli', 'containerd.io'],
+    }
 }
-exec { 'add-docker-key':
-  command =>'apt-key add docker-key',
-  require => Exec['get-docker-key'],
-}
-file { 'docker.list':
-  path    => '/etc/apt/sources.list.d/docker.list',
-  ensure  => file,
-  content => 'deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable',
-}
-package { $reqpkgs:
+package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
   ensure  => installed,
-  require => File['docker.list'],
 }
 EOF
 }
@@ -200,22 +213,43 @@ puppet_install_kubernetes()
 # https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
 {
     tee -a $file <<EOF >/dev/null
-exec { 'get-kubernetes-key':
-  command => 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg -o kubernetes-key',
-  require => Package['curl'],
-}
-exec { 'add-kubernetes-key':
-  command => 'apt-key add kubernetes-key',
-  require => Exec['get-kubernetes-key'],
-}
-file { 'kubernetes.list':
-  path    => '/etc/apt/sources.list.d/kubernetes.list',
-  ensure  => file,
-  content => 'deb https://apt.kubernetes.io/ kubernetes-xenial main',
-}
-package { ['kubelet', 'kubeadm', 'kubectl']:
-  ensure  => held,
-  require => File['kubernetes.list'],
+if $::osfamily == 'Debian' {
+    exec { 'get-kubernetes-key':
+      command => 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg -o kubernetes-key',
+      require => Package['curl'],
+    }
+    exec { 'add-kubernetes-key':
+      command => 'apt-key add kubernetes-key',
+      require => Exec['get-kubernetes-key'],
+    }
+    file { 'kubernetes.list':
+      path    => '/etc/apt/sources.list.d/kubernetes.list',
+      ensure  => file,
+      content => 'deb https://apt.kubernetes.io/ kubernetes-xenial main',
+      notify  => Exec['apt-update'],
+    }
+    package { ['kubelet', 'kubeadm', 'kubectl']:
+      ensure  => held,
+      require => File['kubernetes.list'],
+    }
+
+} elsif $::osfamily == 'RedHat' {
+    exec { 'setenforce 0': }
+    exec { 'sed -i "s/^SELINUX=enforcing$/SELINUX=permissive/" config':
+      cwd => '/etc/selinux/',
+    }
+    file { 'kubernetes.repo':
+      path   => '/etc/yum.repos.d/kubernetes.repo',
+      source => 'puppet:///yum.kubernetes.repo',
+    }
+    package { ['kubelet', 'kubeadm', 'kubectl']:
+      ensure  => installed,
+      require => [ File['kubernetes.repo'], Exec['setenforce 0'] ],
+    }
+    service { 'kubelet':
+      enable  => true,
+      require => Package['kubelet'],
+    }
 }
 EOF
 }
@@ -236,7 +270,6 @@ postinstall()
 main()
 {
     requirements
-    puppet_begin
     puppet_install_docker
     puppet_install_docker_util compose
     puppet_install_docker_util machine
@@ -251,4 +284,4 @@ main()
 }
 
 requirements
-puppet_begin
+puppet_install_docker
