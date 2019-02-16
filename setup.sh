@@ -82,27 +82,10 @@ file { '.curlrc':
   content => 'proxy = http://autenticador:Autent1c\$50d0r@10.8.14.22:6588',
   before  => Package['curl'],
 }
-package { ['apt-transport-https',
-           'ca-certificates',
-           'curl',
-           'gnupg2',
-           'software-properties-common']:
-  ensure  => present,
-  require => Exec['apt-update'],
-}
-exec { 'apt-update':
-  command   => 'apt-get update',
-  subscribe => [ File['docker.list'], File['kubernetes.list'] ],
-}
-EOF
+package { 'curl':
+  ensure => installed,
 }
 
-puppet_install_docker()
-# Installs docker according to the documentation at
-# https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
-{
-    tee -a $file <<EOF >/dev/null
-// https://docs.docker.com/install/linux/docker-ce/debian/#uninstall-old-versions
 if $::osfamily == 'Debian' {
     $oldpkgs = ['docker',
                 'docker-engine',
@@ -112,11 +95,14 @@ if $::osfamily == 'Debian' {
 
     $reqpkgs = ['apt-transport-https',
                 'ca-certificates',
-                'curl',
                 'gnupg2',
                 'software-properties-common']
 
-// https://docs.docker.com/install/linux/docker-ce/centos/#uninstall-old-versions
+    exec { 'apt-update':
+      command   => 'apt-get update',
+      subscribe => [ File['docker.list'], File['kubernetes.list'] ],
+    }
+
 } elsif $::osfamily == 'RedHat' {
     $oldpkgs = ['docker',
                 'docker-client',
@@ -131,12 +117,23 @@ if $::osfamily == 'Debian' {
                 'device-mapper-persistent-data',
                 'lvm2']
 
-} else fail('Unsupported osfamily.')
+} else fail('Unsupported osfamily.');
 
 package { $oldpkgs:
   ensure => absent,
   before => Package['docker-ce'],
 }
+package { $reqpkgs:
+  ensure => installed,
+}
+EOF
+}
+
+puppet_install_docker()
+# Installs docker according to the documentation at
+# https://docs.docker.com/install/linux/docker-ce/debian/#install-using-the-repository
+{
+    tee -a $file <<EOF >/dev/null
 service { 'docker':
   enabled => true,
   started => true,
