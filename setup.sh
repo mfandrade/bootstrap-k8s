@@ -163,7 +163,7 @@ if $::osfamily == 'Debian' {
     \$repo = 'https://download.docker.com/linux/centos/docker-ce.repo'
     exec { 'add-yum-repo':
       command => 'yum-config-manager --add-repo \$repo',
-      before  => ['docker-ce', 'docker-ce-cli', 'containerd.io'],
+      before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
     }
 }
 package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
