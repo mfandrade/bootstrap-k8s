@@ -155,7 +155,7 @@ file { 'docker.list':
   ensure  => file,
   content => 'deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable',
 }
-package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
+package { $reqpkgs:
   ensure  => installed,
   require => File['docker.list'],
 }
