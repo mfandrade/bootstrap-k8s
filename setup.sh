@@ -160,10 +160,14 @@ if $::osfamily == 'Debian' {
     }
 
 } elsif $::osfamily == 'RedHat' {
-    \$repo = 'https://download.docker.com/linux/centos/docker-ce.repo'
     exec { 'add-yum-repo':
-      command => 'yum-config-manager --add-repo \$repo',
+      command => 'yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo',
       before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
+    }
+    service { 'docker':
+      ensure  => running,
+      enable  => true,
+      require => Package['docker-ce'],
     }
 }
 package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
