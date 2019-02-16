@@ -37,7 +37,7 @@ check_distro()
 
 requirements()
 {
-    local so=$(check_distro)
+    local so=($(check_distro))
     local distro=${so[0]}
     local version=${so[1]}
     local codename=${so[2]}
@@ -57,13 +57,14 @@ requirements()
             local url="https://apt.puppetlabs.com/${pkg}"
             curl -sL -O $url && \
                 dpkg -i $pkg &>/dev/null && \
-                apt-get update &>/dev/null
+                apt-get update &>/dev/null && \
                 apt-get install -y puppet-agent &>/dev/null
+            ;;
         *)
             err "Distribution not yet supported."
             exit
             ;;
-
+    esac
 }
 
 puppet_begin()
