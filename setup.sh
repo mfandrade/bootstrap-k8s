@@ -92,18 +92,18 @@ exec { 'apt-update':
   onlyif  => 'test -x /usr/bin/apt-get',
 }
 
-\$http_proxy_docker = @(END)
+\$proxy_docker = @(END)
 [Service]
-Environment="HTTP_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
+Environment="HTTPS_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
 END
 exec { 'docker.service.d':
   command => 'mkdir -p /etc/systemd/system/docker.service.d/',
-  before  => File['http-proxy.conf'],
+  before  => File['https-proxy.conf'],
 }
-file { 'http-proxy.conf':
-  path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
+file { 'https-proxy.conf':
+  path    => '/etc/systemd/system/docker.service.d/https-proxy.conf',
   ensure  => file,
-  content => "\$http_proxy_docker",
+  content => "\$proxy_docker",
   require => Package['docker-ce'],
 }
 EOF
@@ -247,7 +247,7 @@ if $::osfamily == 'Debian' {
     }
     package { ['kubelet', 'kubeadm', 'kubectl']:
       ensure  => held,
-      require => File['kubernetes.list'],
+      require => [ File['kubernetes.list'], Exec['apt-update'] ],
     }
 
 } elsif $::osfamily == 'RedHat' {
