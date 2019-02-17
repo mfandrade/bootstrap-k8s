@@ -81,11 +81,25 @@ Exec {
 file { '.curlrc':
   path    => '${HOME}/.curlrc',
   ensure  => file,
-  content => 'proxy = "${proxy}"', // TODO: juntar proxies
+  content => 'proxy = "${proxy}"',
   before  => Package['curl'],
 }
 package { 'curl':
   ensure => installed,
+}
+\$http_proxy_docker = @(END)
+[Service]
+Environment="HTTP_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
+END
+file { 'docker.service.d':
+  path   => '/etc/systemd/system/',
+  ensure => 'directory',
+}
+file { 'http-proxy.conf':
+  path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
+  content => inline_epp(\$http_proxy_docker),
+  require => File['docker.service.d'],
+  before  => Package['docker-ce'],
 }
 
 if $::osfamily == 'Debian' {
@@ -145,20 +159,6 @@ service { 'docker':
 }
 package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
   ensure  => installed,
-}
-file { 'docker.service.d':
-  path   => '/etc/systemd/system/',
-  ensure => directory,
-}
-\$http_proxy_docker = @(END)
-[Service]
-Environment="HTTP_PROXY=\$proxy" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
-END
-file { 'http-proxy.conf':
-  path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
-  content => inline_epp(\$http_proxy_docker, {'proxy' => '${proxy}'}),
-  require => File['docker.service.d'],
-  before  => Service['docker'],
 }
 
 if $::osfamily == 'Debian' {
@@ -250,7 +250,9 @@ if $::osfamily == 'Debian' {
     }
 
 } elsif $::osfamily == 'RedHat' {
-    exec { 'setenforce 0': }
+    exec { 'setenforce 0':
+      onlyif => 'command -v setenforce',
+    }
     exec { 'sed -i "s/^SELINUX=enforcing$/SELINUX=permissive/" config':
       cwd => '/etc/selinux/',
     }
@@ -301,7 +303,7 @@ main()
     puppet_install_docker_util machine
     puppet_install_kubernetes
 
-    puppet apply --logdest=/tmp/k8s-install-log.json $file \
+    puppet apply --noop --logdest=/tmp/k8s-install-log.json $file \
         && echo ']' >> /tmp/k8s-install-log.json
 
     check_docker
