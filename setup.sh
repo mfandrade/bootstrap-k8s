@@ -106,15 +106,6 @@ file { 'http-proxy.conf':
   content => "\$http_proxy_docker",
   require => Package['docker-ce'],
 }
-
-
-package { \$oldpkgs:
-  ensure => absent,
-  before => Package['docker-ce'],
-}
-package { \$reqpkgs:
-  ensure => installed,
-}
 EOF
 }
 
