@@ -5,7 +5,7 @@ set -fue
 
 dir=$(/bin/mktemp -d)
 file="${dir}/install.pp"
-proxy='http://autenticador:Autent1c\$50d0r@10.8.14.22:6588'
+proxy='http://autenticador:Autent1c%40d0r@10.8.14.22:6588'
 
 if [ "$EUID" -ne 0 ]; then
     echo "This script must be run as root."
