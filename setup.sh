@@ -137,9 +137,12 @@ puppet_install_docker()
 
     tee -a $file <<EOF >/dev/null
 service { 'docker':
-  start   => true,
+  ensure  => running,
   enable  => true,
   require => Package['docker-ce'],
+}
+package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
+  ensure  => installed,
 }
 
 if $::osfamily == 'Debian' {
@@ -165,14 +168,6 @@ if $::osfamily == 'Debian' {
       command => "yum-config-manager --add-repo \$repo",
       before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
     }
-    service { 'docker':
-      ensure  => running,
-      enable  => true,
-      require => Package['docker-ce'],
-    }
-}
-package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
-  ensure  => installed,
 }
 EOF
 }
