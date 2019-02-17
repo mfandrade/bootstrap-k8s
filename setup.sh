@@ -5,6 +5,7 @@ set -fue
 
 dir=$(/bin/mktemp -d)
 file="${dir}/install.pp"
+proxy='http://autenticador:Autent1c\$50d0r@10.8.14.22:6588'
 
 if [ "$EUID" -ne 0 ]; then
     echo "This script must be run as root."
@@ -80,7 +81,7 @@ Exec {
 file { '.curlrc':
   path    => '${HOME}/.curlrc',
   ensure  => file,
-  content => 'proxy = http://autenticador:Autent1c\$50d0r@10.8.14.22:6588',
+  content => 'proxy = ${proxy}', // TODO: juntar proxies
   before  => Package['curl'],
 }
 package { 'curl':
@@ -143,6 +144,20 @@ service { 'docker':
 }
 package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
   ensure  => installed,
+}
+// https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
+file { 'docker.service.d':
+  path   => '/etc/systemd/system/',
+  ensure => directory,
+}
+$\http_proxy_docker = @(END)
+[Service]
+Environment="HTTP_PROXY=%s" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
+END
+file { 'http-proxy.conf':
+  path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
+  content => inline_epp(\$http_proxy_docker, ${proxy}),
+  require => File['docker.service.d'],
 }
 
 if $::osfamily == 'Debian' {
@@ -238,9 +253,19 @@ if $::osfamily == 'Debian' {
     exec { 'sed -i "s/^SELINUX=enforcing$/SELINUX=permissive/" config':
       cwd => '/etc/selinux/',
     }
+    \$kubernetes_repo = @(END)
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kube*
+END
     file { 'kubernetes.repo':
-      path   => '/etc/yum.repos.d/kubernetes.repo',
-      source => 'puppet:///yum.kubernetes.repo',
+      path    => '/etc/yum.repos.d/kubernetes.repo',
+      content => inline_template(\$kubernetes_repo),
     }
     package { ['kubelet', 'kubeadm', 'kubectl']:
       ensure  => installed,
