@@ -87,6 +87,11 @@ file { '.curlrc':
 package { 'curl':
   ensure => installed,
 }
+exec { 'apt-update':
+  command => 'apt-get update',
+  onlyif  => 'command -v apt-get',
+}
+
 \$http_proxy_docker = @(END)
 [Service]
 Environment="HTTP_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
@@ -102,37 +107,6 @@ file { 'http-proxy.conf':
   require => Package['docker-ce'],
 }
 
-if $::osfamily == 'Debian' {
-    \$oldpkgs = ['docker',
-                'docker-engine',
-                'docker-io',
-                'containerd',
-                'runc']
-
-    \$reqpkgs = ['apt-transport-https',
-                'ca-certificates',
-                'gnupg2',
-                'software-properties-common']
-
-    exec { 'apt-update':
-      command   => 'apt-get update',
-    }
-
-} elsif $::osfamily == 'RedHat' {
-    \$oldpkgs = ['docker',
-                'docker-client',
-                'docker-client-latest',
-                'docker-common',
-                'docker-latest',
-                'docker-latest-logrotate',
-                'docker-logrotate',
-                'docker-engine']
-
-    \$reqpkgs = ['yum-utils',
-                'device-mapper-persistent-data',
-                'lvm2']
-
-} else { fail('Unsupported osfamily.') }
 
 package { \$oldpkgs:
   ensure => absent,
@@ -152,17 +126,25 @@ puppet_install_docker()
 
 # https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
     tee -a $file <<EOF >/dev/null
-\$docker_pkgs = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 service { 'docker':
   ensure    => running,
   enable    => true,
   subscribe => File['http-proxy.conf'],
 }
-package { \$docker_pkgs:
-  ensure  => latest,
-}
+\$docker_pkgs = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 
 if $::osfamily == 'Debian' {
+    \$oldpkgs = ['docker',
+                'docker-engine',
+                'docker-io',
+                'containerd',
+                'runc']
+
+    \$reqpkgs = ['apt-transport-https',
+                'ca-certificates',
+                'gnupg2',
+                'software-properties-common']
+
     exec { 'get-docker-key':
       command => 'curl -fsSL https://download.docker.com/linux/debian/gpg -o docker-key',
       require => Package['curl'],
@@ -175,16 +157,42 @@ if $::osfamily == 'Debian' {
       path    => '/etc/apt/sources.list.d/docker.list',
       ensure  => file,
       content => 'deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable',
-      before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
       notify  => Exec['apt-update'],
+    }
+    package { \$docker_pkgs:
+      ensure  => latest,
+      require => File['docker.list'],
     }
 
 } elsif $::osfamily == 'RedHat' {
+    \$oldpkgs = ['docker',
+                'docker-client',
+                'docker-client-latest',
+                'docker-common',
+                'docker-latest',
+                'docker-latest-logrotate',
+                'docker-logrotate',
+                'docker-engine']
+
+    \$reqpkgs = ['yum-utils',
+                'device-mapper-persistent-data',
+                'lvm2']
+
     \$repo = 'https://download.docker.com/linux/centos/docker-ce.repo'
     exec { 'add-yum-repo':
       command => "yum-config-manager --add-repo \$repo",
       before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
     }
+
+} else { fail('Unsupported osfamily.') }
+
+package { \$old_pkgs:
+  ensure => purge,
+  before => \$docker_pkgs,
+}
+package { \$req_pkgs:
+  ensure => installed,
+  before => \$docker_pkgs,
 }
 EOF
 }
