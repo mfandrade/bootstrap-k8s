@@ -81,7 +81,7 @@ Exec {
 file { '.curlrc':
   path    => '${HOME}/.curlrc',
   ensure  => file,
-  content => 'proxy = ${proxy}', // TODO: juntar proxies
+  content => 'proxy = "${proxy}"', // TODO: juntar proxies
   before  => Package['curl'],
 }
 package { 'curl':
@@ -136,6 +136,7 @@ puppet_install_docker()
 {
     __puppet_begin
 
+# https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
     tee -a $file <<EOF >/dev/null
 service { 'docker':
   ensure  => running,
@@ -145,19 +146,19 @@ service { 'docker':
 package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
   ensure  => installed,
 }
-// https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
 file { 'docker.service.d':
   path   => '/etc/systemd/system/',
   ensure => directory,
 }
-$\http_proxy_docker = @(END)
+\$http_proxy_docker = @(END)
 [Service]
-Environment="HTTP_PROXY=%s" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
+Environment="HTTP_PROXY=\$proxy" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
 END
 file { 'http-proxy.conf':
   path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
-  content => inline_epp(\$http_proxy_docker, ${proxy}),
+  content => inline_epp(\$http_proxy_docker, {'proxy' => '${proxy}'}),
   require => File['docker.service.d'],
+  before  => Service['docker'],
 }
 
 if $::osfamily == 'Debian' {
