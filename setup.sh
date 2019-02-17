@@ -178,12 +178,12 @@ if $::osfamily == 'Debian' {
 } else { fail('Unsupported osfamily.') }
 
 package { \$oldpkgs:
-  ensure => purge,
-  before => \$docker_pkgs,
+  ensure => absent,
+  before => Package['docker-ce'],
 }
 package { \$reqpkgs:
   ensure => installed,
-  before => \$docker_pkgs,
+  before => Package['docker-ce'],
 }
 EOF
 }
