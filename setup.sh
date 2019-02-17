@@ -230,7 +230,7 @@ puppet_install_kubernetes()
 # https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
 {
     tee -a $file <<EOF >/dev/null
-if $::osfamily = 'Debian' {
+if $::osfamily == 'Debian' {
     exec { 'get-kubernetes-key':
       command => 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg -o kubernetes-key',
       require => Package['curl'],
@@ -250,7 +250,7 @@ if $::osfamily = 'Debian' {
       require => File['kubernetes.list'],
     }
 
-} elsif $::osfamily = 'RedHat' {
+} elsif $::osfamily == 'RedHat' {
     exec { 'setenforce 0':
       onlyif => 'command -v setenforce',
     }
