@@ -283,5 +283,4 @@ main()
     postinstall
 }
 
-requirements
-puppet_install_docker
+main
