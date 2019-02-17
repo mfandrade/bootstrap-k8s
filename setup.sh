@@ -89,7 +89,7 @@ package { 'curl':
 }
 exec { 'apt-update':
   command => 'apt-get update',
-  onlyif  => 'command -v apt-get',
+  onlyif  => 'test -x /usr/bin/apt-get',
 }
 
 \$http_proxy_docker = @(END)
@@ -117,12 +117,13 @@ puppet_install_docker()
 
 # https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
     tee -a $file <<EOF >/dev/null
-service { 'docker':
-  ensure    => running,
-  enable    => true,
-  subscribe => File['http-proxy.conf'],
-}
 \$docker_pkgs = ['docker-ce', 'docker-ce-cli', 'containerd.io']
+
+service { 'docker':
+  ensure  => running,
+  enable  => true,
+  require => Package[\$docker_pkgs],
+}
 
 if $::osfamily == 'Debian' {
     \$oldpkgs = ['docker',
