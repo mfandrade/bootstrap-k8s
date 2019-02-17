@@ -91,14 +91,14 @@ package { 'curl':
 [Service]
 Environment="HTTP_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
 END
-file { 'docker.service.d':
-  path   => '/etc/systemd/system/',
-  ensure => 'directory',
+exec { 'docker.service.d':
+  command => 'mkdir -p /etc/systemd/system/docker.service.d/',
+  before  => File['http-proxy.conf'],
 }
 file { 'http-proxy.conf':
   path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
-  content => inline_epp(\$http_proxy_docker),
-  require => File['docker.service.d'],
+  ensure  => file,
+  content => "\$http_proxy_docker",
   before  => Package['docker-ce'],
 }
 
@@ -268,7 +268,7 @@ exclude=kube*
 END
     file { 'kubernetes.repo':
       path    => '/etc/yum.repos.d/kubernetes.repo',
-      content => inline_template(\$kubernetes_repo),
+      content => "\$kubernetes_repo",
     }
     package { ['kubelet', 'kubeadm', 'kubectl']:
       ensure  => installed,
