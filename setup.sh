@@ -99,7 +99,7 @@ file { 'http-proxy.conf':
   path    => '/etc/systemd/system/docker.service.d/http-proxy.conf',
   ensure  => file,
   content => "\$http_proxy_docker",
-  before  => Package['docker-ce'],
+  require => Package['docker-ce'],
 }
 
 if $::osfamily == 'Debian' {
@@ -152,13 +152,14 @@ puppet_install_docker()
 
 # https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
     tee -a $file <<EOF >/dev/null
+\$docker_pkgs = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 service { 'docker':
-  ensure  => running,
-  enable  => true,
-  require => Package['docker-ce'],
+  ensure    => running,
+  enable    => true,
+  subscribe => File['http-proxy.conf'],
 }
-package { ['docker-ce', 'docker-ce-cli', 'containerd.io']:
-  ensure  => installed,
+package { \$docker_pkgs:
+  ensure  => latest,
 }
 
 if $::osfamily == 'Debian' {
