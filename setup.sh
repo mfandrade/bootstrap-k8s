@@ -46,8 +46,8 @@ requirements()
     case $distro in
         redhat|centos)
             yum install -y curl &>/dev/null
-            local pkg="puppet5-release-el-${version}.noarch.rpm"
-            local url="https://yum.puppet.com/puppet5/${pkg}"
+            local pkg="puppet6-release-el-${version}.noarch.rpm"
+            local url="https://yum.puppetlabs.com/puppet6/${pkg}"
             curl -sL -O $url && \
             rpm -Uvh $pkg &>/dev/null && \
                 yum install -y puppet-agent &>/dev/null
@@ -55,7 +55,7 @@ requirements()
 
         debian|ubuntu)
             apt-get install -y curl &>/dev/null
-            local pkg="puppet5-release-${codename}.deb"
+            local pkg="puppet6-release-${codename}.deb"
             local url="https://apt.puppetlabs.com/${pkg}"
             curl -sL -O $url && \
                 dpkg -i $pkg &>/dev/null && \
