@@ -91,21 +91,6 @@ exec { 'apt-update':
   command => 'apt-get update',
   onlyif  => 'test -x /usr/bin/apt-get',
 }
-
-\$proxy_docker = @(END)
-[Service]
-Environment="HTTPS_PROXY=${proxy}" "NO_PROXY=localhost,127.0.0.1,.trt8.net"
-END
-exec { 'docker.service.d':
-  command => 'mkdir -p /etc/systemd/system/docker.service.d/',
-  before  => File['https-proxy.conf'],
-}
-file { 'https-proxy.conf':
-  path    => '/etc/systemd/system/docker.service.d/https-proxy.conf',
-  ensure  => file,
-  content => "\$proxy_docker",
-  require => Package['docker-ce'],
-}
 EOF
 }
 
@@ -253,9 +238,11 @@ if $::osfamily == 'Debian' {
 } elsif $::osfamily == 'RedHat' {
     exec { 'setenforce 0':
       onlyif => 'command -v setenforce',
+      before => File['kubernetes.repo'],
     }
-    exec { 'sed -i "s/^SELINUX=enforcing$/SELINUX=permissive/" config':
-      cwd => '/etc/selinux/',
+    exec { 'sed -i "s/^SELINUX=enforcing$/SELINUX=disabled/" config':
+      cwd    => '/etc/selinux/',
+      before => File['kubernetes.repo'],
     }
     \$kubernetes_repo = @(END)
 [kubernetes]
@@ -265,7 +252,6 @@ enabled=1
 gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-exclude=kube*
 END
     file { 'kubernetes.repo':
       path    => '/etc/yum.repos.d/kubernetes.repo',
@@ -273,7 +259,7 @@ END
     }
     package { ['kubelet', 'kubeadm', 'kubectl']:
       ensure  => installed,
-      require => [ File['kubernetes.repo'], Exec['setenforce 0'] ],
+      require => File['kubernetes.repo'],
     }
     service { 'kubelet':
       enable  => true,
