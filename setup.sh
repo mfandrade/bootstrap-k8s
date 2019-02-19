@@ -301,7 +301,7 @@ main()
     puppet_install_docker_util machine
     puppet_install_kubernetes
 
-    puppet apply --noop --logdest=/tmp/k8s-install-log.json $file \
+    puppet apply --logdest=/tmp/k8s-install-log.json $file \
         && echo ']' >> /tmp/k8s-install-log.json
 
     check_docker
