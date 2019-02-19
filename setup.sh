@@ -100,7 +100,6 @@ puppet_install_docker()
 {
     __puppet_begin
 
-# https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
     tee -a $file <<EOF >/dev/null
 \$docker_pkgs = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 
@@ -158,7 +157,11 @@ if $::osfamily == 'Debian' {
     \$repo = 'https://download.docker.com/linux/centos/docker-ce.repo'
     exec { 'add-yum-repo':
       command => "yum-config-manager --add-repo \$repo",
-      before  => Package['docker-ce', 'docker-ce-cli', 'containerd.io'],
+      before  => Package[\$docker_pkgs],
+    }
+    package { \$docker_pkgs:
+      ensure  => latest,
+      require => Exec['add-yum-repo'],
     }
 
 } else { fail('Unsupported osfamily.') }
