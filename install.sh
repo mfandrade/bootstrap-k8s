@@ -79,7 +79,7 @@ node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
   include docker
 }
 EOF
-  pupppet --modulepath=modules/ $dir/site.pp --verbose
+  puppet --modulepath=modules/ $dir/site.pp --verbose
 }
 
 main
