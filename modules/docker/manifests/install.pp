@@ -30,7 +30,7 @@ class docker::install($release = 'stable') {
     }
     exec { '/usr/bin/apt-get update':
       require => File[$repo_file],
-      before  => Notify['ready'],
+      before  => Notify['docker-ready'],
     }
     ->
     notify { "Ready to install docker $release": }
@@ -91,13 +91,12 @@ EOF
   file { $repo_file:
     ensure => 'file',
   }
-  notify { 'ready':
+  notify { 'docker-ready':
     message => "Ready to install docker $release...",
   }
   ->
   package { $docker:
     ensure  => 'latest',
-    #require => Notify['ready'],
   }
   ->
   service { 'docker':
