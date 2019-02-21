@@ -21,7 +21,7 @@ class docker::install($release = 'stable') {
       'gnupg2',
       'software-properties-common'
     ]
-    $repo_file = "/etc/apt/sources.list.d/docker-$release.list",
+    $repo_file = "/etc/apt/sources.list.d/docker-$release.list"
     $repo_content = "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) $release"
 
     exec { '/usr/bin/apt-get update':
@@ -47,7 +47,7 @@ class docker::install($release = 'stable') {
       'device-mapper-persistent-data',
       'lvm2'
     ]
-    $repo_file = "/etc/yum.repos.d/docker-$release.repo",
+    $repo_file = "/etc/yum.repos.d/docker-$release.repo"
     $repo_content = @(EOF)
 [docker-ce-$release]
 name=Docker CE $release - \$basearch
