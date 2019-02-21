@@ -24,8 +24,8 @@ class docker::install($release = 'stable') {
     $repo_file = "/etc/apt/sources.list.d/docker-$release.list"
     $repo_content = "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) $release"
 
-    exec { 'rm -f docker*.list':
-      cwd    => '/etc/apt/sources.list.d',
+    exec { '/bin/rm -f docker*.list':
+      cwd    => '/etc/apt/sources.list.d/',
       before => File[$repo_file],
     }
     exec { '/usr/bin/apt-get update':
