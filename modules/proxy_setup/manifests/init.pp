@@ -1,5 +1,5 @@
 define proxy_setup {
-    $proxy = $title,
+    $proxy = $title
     $no_proxy = "\$(hostname -i),127.0.0.1,localhost"
     $envvars = @(EOF)
   http_proxy="$proxy"
