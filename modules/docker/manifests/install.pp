@@ -1,5 +1,7 @@
 class docker::install($release = 'stable') {
 
+  include docker::add_repo
+  
   $docker = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 
   if ($release != 'stable') and ($release != 'test') and ($release != 'nightly') {
@@ -21,19 +23,6 @@ class docker::install($release = 'stable') {
       'gnupg2',
       'software-properties-common'
     ]
-    $repo_file = "/etc/apt/sources.list.d/docker-$release.list"
-    $repo_content = "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) $release"
-
-    exec { '/bin/rm -f docker*.list':
-      cwd    => '/etc/apt/sources.list.d/',
-      before => File[$repo_file],
-    }
-    exec { '/usr/bin/apt-get update':
-      require => File[$repo_file],
-      before  => Notify['ready'],
-    }
-    ->
-    notify { "Ready to install docker $release": }
 
   } elsif $::osfamily == 'RedHat' {
     $oldpkgs = [
@@ -51,34 +40,6 @@ class docker::install($release = 'stable') {
       'device-mapper-persistent-data',
       'lvm2'
     ]
-    $repo_file = "/etc/yum.repos.d/docker-$release.repo"
-    $repo_content = @(EOF)
-[docker-ce-$release]
-name=Docker CE $release - \$basearch
-baseurl=https://download.docker.com/linux/centos/7/\$basearch/$release
-enabled=1
-gpgcheck=1
-gpgkey=https://download.docker.com/linux/centos/gpg
-
-[docker-ce-$release-debuginfo]
-name=Docker CE $release - Debuginfo \$basearch
-baseurl=https://download.docker.com/linux/centos/7/debug-\$basearch/$release
-enabled=0
-gpgcheck=1
-gpgkey=https://download.docker.com/linux/centos/gpg
-
-[docker-ce-$release-source]
-name=Docker CE $release - Sources
-baseurl=https://download.docker.com/linux/centos/7/source/$release
-enabled=0
-gpgcheck=1
-gpgkey=https://download.docker.com/linux/centos/gpg
-EOF
-
-    exec { 'rm -f docker-ce*.repo':
-      cwd    => '/etc/yum.repos.d/',
-      before => File[$repo_file],
-    }
 
   } else { fail("Unsupported osfamily ($::osfamily)") }
 
@@ -88,16 +49,8 @@ EOF
   package { $reqpkgs:
     ensure => 'installed',
   }
-  file { $repo_file:
-    ensure => 'file',
-  }
-  notify { 'ready':
-    message => "Ready to install docker $release...",
-  }
-  ->
   package { $docker:
     ensure  => 'latest',
-    #require => Notify['ready'],
   }
   ->
   service { 'docker':

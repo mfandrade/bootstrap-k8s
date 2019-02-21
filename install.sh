@@ -78,7 +78,7 @@ node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
   include docker
 }
 EOF
-  puppet apply --modulepath=modules/ $dir/site.pp >/dev/null
+  puppet apply --debug --modulepath=modules/ $dir/site.pp
   docker run hello-world | grep '^Hello'
 }
 
