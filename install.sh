@@ -40,23 +40,22 @@ require_puppet()
   local distro=${so[0]}
   local version=${so[1]}
   local codename=${so[2]}
-  cd $dir
   case $distro in
       redhat|centos)
-          yum install -y curl &>/dev/null
+          command -v curl || yum install -y curl &>/dev/null
           local pkg="puppet6-release-el-${version}.noarch.rpm"
           local url="https://yum.puppet.com/puppet6/${pkg}"
-          curl -sL -O $url && \
-          rpm -Uvh $pkg &>/dev/null && \
+          curl -sL -O $dir/$url && \
+          rpm -Uvh $dir/$pkg &>/dev/null && \
               yum install -y puppet-agent &>/dev/null
           ;;
 
       debian|ubuntu)
-          apt-get install -y curl &>/dev/null
+          command -v curl || apt-get install -y curl &>/dev/null
           local pkg="puppet6-release-${codename}.deb"
           local url="https://apt.puppetlabs.com/${pkg}"
-          curl -sL -O $url && \
-              dpkg -i $pkg &>/dev/null && \
+          curl -sL -O $dir/$url && \
+              dpkg -i $dir/$pkg &>/dev/null && \
               apt-get update &>/dev/null && \
               apt-get install -y puppet-agent &>/dev/null
           ;;
@@ -72,17 +71,16 @@ require_puppet()
 main ()
 {
   require_puppet
-  cat <<EOF >$dir/site.pp
-node 'master.trt8.net', 'nodes.trt8.net' {
+
+  tee -a $dir/site.pp <<EOF
+node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
 
   proxy_setup { '$proxy': }
   include docker
 }
 EOF
-  cp -rfv modules/ $dir
   cp -f site.pp $dir
-  pupppet --modulepath=$dir/modules/ $dir/site.pp --verbose
-
+  pupppet --modulepath=modules/ $dir/site.pp --verbose
 }
 
 main
