@@ -79,7 +79,6 @@ node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
   include docker
 }
 EOF
-  cp -f site.pp $dir
   pupppet --modulepath=modules/ $dir/site.pp --verbose
 }
 
