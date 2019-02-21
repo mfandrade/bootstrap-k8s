@@ -81,6 +81,8 @@ node 'master.trt8.net', 'nodes.trt8.net' {
 EOF
   cp -fR modules/ $dir
   cp -f site.pp $dir
-  pupppet --module_path=$dir/modules/ $dir/site.pp --verbose
+  pupppet --modulepath=$dir/modules/ $dir/site.pp --verbose
 
 }
+
+main
