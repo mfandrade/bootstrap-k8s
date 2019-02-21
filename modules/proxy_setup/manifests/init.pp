@@ -33,7 +33,7 @@ define proxy_setup {
       ensure => 'directory',
     }
     ->
-    file { '/etc/systemd/system/docker.service.d/proxy.conf'
+    file { '/etc/systemd/system/docker.service.d/proxy.conf':
       ensure  => 'file',
       content => $docker_proxy,
     }
