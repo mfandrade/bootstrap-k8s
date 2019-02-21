@@ -79,7 +79,7 @@ node 'master.trt8.net', 'nodes.trt8.net' {
   include docker
 }
 EOF
-  cp -fR modules/ $dir
+  cp -rfv modules/ $dir
   cp -f site.pp $dir
   pupppet --modulepath=$dir/modules/ $dir/site.pp --verbose
 
