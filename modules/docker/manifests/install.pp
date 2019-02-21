@@ -49,7 +49,6 @@ class docker::install($release = 'stable') {
   package { $reqpkgs:
     ensure => 'installed',
   }
-
   package { $docker:
     ensure  => 'latest',
   }
