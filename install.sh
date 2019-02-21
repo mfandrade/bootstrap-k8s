@@ -42,7 +42,7 @@ require_puppet()
   local codename=${so[2]}
   case $distro in
       redhat|centos)
-          command -v curl || yum install -y curl &>/dev/null
+          command -v curl &>/dev/null || yum install -y curl &>/dev/null
           local pkg="puppet6-release-el-${version}.noarch.rpm"
           local url="https://yum.puppet.com/puppet6/${pkg}"
           curl -sL -O $dir/$url && \
@@ -51,7 +51,7 @@ require_puppet()
           ;;
 
       debian|ubuntu)
-          command -v curl || apt-get install -y curl &>/dev/null
+          command -v curl &>/dev/null || apt-get install -y curl &>/dev/null
           local pkg="puppet6-release-${codename}.deb"
           local url="https://apt.puppetlabs.com/${pkg}"
           curl -sL -O $dir/$url && \
@@ -72,14 +72,13 @@ main ()
 {
   require_puppet
 
-  tee -a $dir/site.pp <<EOF
+  tee -a $dir/site.pp <<EOF >/dev/null
 node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
-
   proxy_setup { '$proxy': }
   include docker
 }
 EOF
-  puppet apply --modulepath=modules/ $dir/site.pp --verbose
+  puppet apply --modulepath=modules/ $dir/site.pp >/dev/null
 }
 
 main
