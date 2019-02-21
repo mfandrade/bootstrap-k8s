@@ -18,10 +18,11 @@ EOF
     content => $envvars,
   }
   ->
-  exec { 'source proxy.sh':
-    cwd => '/etc/profile.d/',
+  exec { 'sh proxy.sh':
+    cwd  => '/etc/profile.d/',
+    path => '/bin:/usr/bin',
   }
-  file { '$HOME/.curlrc':
+  file { '/root/.curlrc':
     ensure  => 'file',
     content => "proxy = \"${proxy}\"",
   }
