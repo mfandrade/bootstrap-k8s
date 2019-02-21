@@ -7,5 +7,6 @@ node 'master.trt8.net', 'nodes.trt8.net' {
 }
 
 node default {
+  include kubernetes::kubeadm
   include kubernetes::kubectl
 }
