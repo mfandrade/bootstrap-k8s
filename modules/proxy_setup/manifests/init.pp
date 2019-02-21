@@ -26,10 +26,6 @@ EOF
     ensure  => 'file',
     content => "proxy = \"${proxy}\"",
   }
-  ->
-  package { 'curl':
-    ensure => 'installed',
-  }
   file { '/etc/systemd/system/docker.service.d/':
     ensure => 'directory',
   }
