@@ -2,8 +2,8 @@ class docker::install($release = 'stable') {
 
   $docker = ['docker-ce', 'docker-ce-cli', 'containerd.io']
 
-  if ($release != 'stable') or ($release != 'test') or ($release != 'nightly') {
-    fail('Docker release must be one of "stable", "test" or "nightly".')
+  if ($release != 'stable') and ($release != 'test') and ($release != 'nightly') {
+    fail("Docker release must be one of 'stable', 'test' or 'nightly': $release")
   }
 
   if $::osfamily == 'Debian' {
