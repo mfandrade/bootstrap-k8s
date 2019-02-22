@@ -79,7 +79,7 @@ node 'vm-k8s-master.trt8.net', 'vm-k8s-nodes.trt8.net' {
 }
 EOF
   puppet apply --debug --modulepath=modules/ $dir/site.pp
-  docker run hello-world | grep '^Hello'
+  [[ -x /usr/bin/docker ]] && docker run hello-world | grep '^Hello' || err 'Docker is not installed :('
 }
 
 main
