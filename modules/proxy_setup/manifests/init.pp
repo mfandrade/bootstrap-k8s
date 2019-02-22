@@ -10,7 +10,7 @@ NO_PROXY="$no_proxy"
 EOF
     $docker_proxy = @(EOF)
 [Service]
-Environment="HTTP_PROXY=$proxy" "HTTPS_PROXY=$proxy" "NO_PROXY=$no_proxy"
+Environment="HTTP_PROXY=<%= @title %>" "HTTPS_PROXY=<%= @title %>" "NO_PROXY=<%= @no_proxy >"
 EOF
   file { '/etc/profile.d/proxy.sh':
     ensure  => 'file',
